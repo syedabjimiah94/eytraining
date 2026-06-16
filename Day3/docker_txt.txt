@@ -1,0 +1,148 @@
+PORTS: 8080/tcp
+
+👉 This means Docker did NOT expose port 8080 to your host, so your browser cannot access it.
+
+❌ Why it’s not working
+Your container is running, but:
+
+8080/tcp → only inside container
+No 0.0.0.0:8080->8080 → not mapped to your machine
+
+So:
+👉 http://localhost:8080 will NOT work
+
+✅ Fix: Run container with port mapping
+Stop/remove existing containers first:
+Shelldocker stop a17ab1424a57 dcefa81101d2docker rm a17ab1424a57 dcefa81101d2``Show more lines
+Then run again with -p flag:
+Shelldocker run -p 8080:8080 local-web-app:v1Show more lines
+
+✅ Now check
+Run:
+Shelldocker psShow more lines
+You should see:
+0.0.0.0:8080->8080/tcp
+
+
+✅ Open in browser
+Now it should work:
+http://localhost:8080
+
+
+regdoc001.azurecr.io
+
+docker tag local-web-app:v1 regdoc001.azurecr.io/local-web-app:v1
+docker push regdoc001.azurecr.io/local-web-app:v1
+
+
+DAy4 
+
+Cell 2: First Normal Form (1NF)
+Rule: Data must be atomic (no lists or multiple values in a single cell) and there must be a defined Primary Key.
+
+import pandas as pd import sqlite3   # ... by Rajat Garg
+Rajat Garg
+10:26
+
+import pandas as pd
+
+import sqlite3
+
+ 
+
+# Create an in-memory SQLite database connection
+
+conn = sqlite3.connect(':memory:')
+
+cursor = conn.cursor()
+
+ 
+
+print("Setup complete. Environment ready.")
+
+ 
+
+# Define a messy, unnormalized dataset (0NF)
+
+# Issues: Non-atomic values (multiple text books), redundant data, mixed concerns.
+
+data_0nf = {
+
+    "Student_ID": [101, 101, 102, 103, 104],
+
+    "Student_Name": ["Alice", "Alice", "Bob", "Charlie", "David"],
+
+    "Course_Code": ["CS101", "MATH201", "CS101", "CS102", "MATH201"],
+
+    "Course_Name": ["Intro to CS", "Calculus I", "Intro to CS", "Data Structures", "Calculus I"],
+
+    "Instructor_ID": ["INS_01", "INS_02", "INS_01", "INS_03", "INS_05"],
+
+    "Instructor_Name": ["Dr. Smith", "Dr. Jones", "Dr. Smith", "Dr. Alan", "Dr. Jones"],
+
+    "Instructor_Office": ["Room 401", "Room 502", "Room 401", "Room 401", "Room 502"],
+
+    "Textbooks_Required": ["Python Basics, Intro to CLI", "Calculus Vol 1", "Python Basics, Intro to CLI", "Algorithms Vol 1", "Calculus Vol 1"],
+
+    "Grade": ["A", "B", "A", "B+", "A-"]
+
+}
+
+ 
+
+df_0nf = pd.DataFrame(data_0nf)
+
+df_0nf.to_sql('Unnormalized_Leasing', conn, index=False, if_exists='replace')
+
+ 
+
+print("\n--- Unnormalized Data (0NF) ---")
+
+df_0nf
+
+0NF dummy data by Rajat Garg
+Rajat Garg
+10:27
+
+0NF dummy data
+
+# Flattening the Textbooks_Required column ... by Rajat Garg
+Rajat Garg
+10:27
+
+# Flattening the Textbooks_Required column to ensure atomicity
+
+df_1nf = df_0nf.assign(Textbooks_Required=df_0nf['Textbooks_Required'].str.split(', ')).explode('Textbooks_Required')
+
+ 
+
+# Save to SQL
+
+df_1nf.to_sql('Table_1NF', conn, index=False, if_exists='replace')
+
+ 
+
+print("--- 1NF Data (Atomic values enforced) ---")
+
+print(f"Row count increased from {len(df_0nf)} to {len(df_1nf)} due to flattening.")
+
+df_1nf
+
+code for doing first normalization on the t... by Rajat Garg
+Rajat Garg
+10:27
+
+code for doing first normalization on the table
+
+Rule: Must be in 1NF, and no partial depe... by Rajat Garg
+Rajat Garg
+10:32
+
+Rule: Must be in 1NF, and no partial dependencies exist. Every non-prime attribute must be fully functionally dependent on the entire primary key, not just part of it.
+
+Rule for 2NF by Rajat Garg
+Rajat Garg
+10:32
+
+Rule for 2NF
+

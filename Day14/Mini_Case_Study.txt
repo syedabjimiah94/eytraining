@@ -1,0 +1,12 @@
+Framework Chosen:
+LangChain (for orchestration) + OpenAI/Claude API + Vector DB (FAISS / Pinecone) + FastAPI (for API integration)
+Step 1:
+Use an ML/LLM model via LangChain to automatically classify incoming emails into categories (billing, delivery, complaint, etc.).
+Step 2:
+Store company policy documents in a Vector Database and use RAG (Retrieval-Augmented Generation) to retrieve relevant documents for each email.
+Step 3:
+Generate a draft reply using an LLM (Claude/OpenAI) by combining the email content + retrieved documents.
+Step 4:
+If the case is complex or low confidence, send it to a human agent via Ticketing API (FastAPI integration, e.g., ServiceNow/Jira).
+Justification:
+This architecture is scalable for 10,000 emails/day, automates classification and response generation using LLMs, improves accuracy with RAG, and ensures reliability by escalating complex cases to humans.

@@ -1,0 +1,79 @@
+                   +------------------+
+                   |   Merchant API   |
+                   | (Payment Request)|
+                   +--------+---------+
+                            |
+                            | Queue
+                            v
+                   +------------------+
+                   |   Payment Core   |
+                   | Transaction Hub  |
+                   +--------+---------+
+                            |
+              +-------------+-------------+
+              |                           |
+              | Queue                     | Queue
+              v                           v
+      +---------------+         +------------------+
+      | Fraud Engine  |         |  Ledger Service  |
+      | Risk Check    |         | Financial Record |
+      +---------------+         +--------+---------+
+                                         |
+                                         | Event Bus
+                                         v
+          +----------------+----------------+----------------+
+          |                |                |                |
+          v                v                v                v
+ +----------------+ +---------------+ +--------------+ +-------------+
+ | Notification   | |   Analytics   | | Audit System | | Future Apps |
+ | SMS / Email    | | & Reporting   | | & Monitoring | | Subscribers |
+ +----------------+ +---------------+ +--------------+ +-------------+
+
+##########################################################################################3
+
+| ID | Integration                 | Classification | Key deciding factor                                                                              |
+
+| -- | --------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+
+| A  | Settlement command          | **Queue**      | It is a command where exactly one consumer must process the request and ensure work is completed |
+
+ 
+
+| B  | Payment received broadcast  | **Event Bus**  | Multiple independent services may need to react to the payment event (fan-out scenario)          |
+
+ 
+
+| C  | SMS / push notifications    | **Event Bus**  | Same event can trigger multiple notification services (email, SMS, push)                         |
+
+ 
+
+| D  | Fraud score request         | **Queue**      | Request-response pattern where only one service should process the scoring                       |
+
+ 
+
+| E  | Account state change events | **Event Bus**  | Broadcasting state changes to multiple subscribers without coupling                              |
+
+ 
+
+| F  | End-of-day reconciliation   | **Queue**      | A specific job/task that must be processed reliably by a controlled consumer set                 | 
+
+
+##########################################################################################3
+Application Gateway or Load Balancer
+
+
+| # | Requirement                   | Classification          | Key deciding factor                              |
+
+| - | ----------------------------- | ----------------------- | ------------------------------------------------ |
+
+| 1 | Patient web portal            | **Application Gateway** | HTTPS traffic + WAF + URL-based routing required |
+
+| 2 | Clinical API (internal)       | **Load Balancer**       | Internal TCP traffic, no HTTP awareness          |
+
+| 3 | DICOM image streaming         | **Load Balancer**       | Raw TCP + long-lived sessions + high throughput  |
+
+| 4 | Auth service (header routing) | **Application Gateway** | Header-based routing + Layer 7 inspection        |
+
+| 5 | Legacy SOAP lab service       | **Load Balancer**       | TCP only + no inspection + simple failover       |
+
+| 6 | Admin dashboard (hostname)    | **Application Gateway** | Host-based routing + HTTPS                       

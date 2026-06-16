@@ -1,0 +1,10 @@
+Feature_Engineered_Columns
+time_sec
+red_ir_ratio
+red_minus_ir
+red_rolling_mean
+ir_rolling_mean
+red_diff
+ir_diff
+red_pct_change
+ir_pct_change

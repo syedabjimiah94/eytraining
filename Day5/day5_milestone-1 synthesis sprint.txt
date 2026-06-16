@@ -1,0 +1,89 @@
+=== SECTION A — PROBLEM STATEMENT ===
+
+This pipeline processes a PDF through five stages: Ingest → Structure → Store → Summarise → Visualise. First, the ingest stage reads a 3-page PDF and extracts raw text from each page. Next, the structure stage converts this unstructured text into a tabular format, capturing metadata like word counts and previews. The store stage persists this structured data as CSV and JSON files for reuse. In the summarise stage, an LLM (via Groq API) condenses the key ideas into exactly three bullet points. Finally, the visualise stage presents insights through a simple bar chart showing word distribution across pages.
+
+=== SECTION B — ARCHITECTURE DIAGRAM ===
+
+PDF (./data/report.pdf)
+   ↓
+[Ingest]
+   ↓ raw page text (list)
+[Structure]
+   ↓ pandas DataFrame
+[Store]
+   ↓ CSV + JSON files (output/)
+[Summarise]
+   ↓ 3 bullet summary (LLM output)
+[Visualise]
+   ↓ bar chart (word_count per page)
+
+=== SECTION C — CODE BLOCKS ===
+
+# C1. LOGGING SETUP
+import logging
+logging.basicConfig(level=logging.INFO)
+
+# C3. STRUCTURE
+import pandas as pd
+
+data = []
+
+for i, text in enumerate(pages_text):
+    word_count = len(text.split())
+    first_50 = text[:50]
+
+    data.append({
+        "page_no": i + 1,
+        "word_count": word_count,
+        "first_50_chars": first_50
+    })
+
+df = pd.DataFrame(data)
+
+logging.info("Data structured into DataFrame")
+
+# C4. STORE
+import os
+
+os.makedirs("output", exist_ok=True)
+
+df.to_csv("output/pages.csv", index=False)
+df.to_json("output/pages.json", orient="records")
+
+logging.info("Data saved to output/pages.csv and output/pages.json")
+
+
+# C5. SUMMARISE WITH GROQ
+import os
+from groq import Groq
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+combined_text = " ".join(pages_text)
+snippet = combined_text[:2000]
+
+response = client.chat.completions.create(
+    model="llama-3.1-8b-instant",
+    messages=[
+        {"role": "user", "content": f"Summarise this in exactly 3 bullet points:\n\n{snippet}"}
+    ]
+)
+
+print(response.choices[0].message.content)
+
+# C6. VISUALISE
+import matplotlib.pyplot as plt
+
+plt.bar(df["page_no"], df["word_count"])
+plt.title("Word Count per Page")
+plt.xlabel("Page Number")
+plt.ylabel("Word Count")
+
+plt.show()
+
+=== SECTION D — EXPECTED GROQ RESPONSE SHAPE ===
+
+The Groq API response will print a concise summary consisting of exactly three bullet points. Each bullet will capture a key idea or theme from the PDF content. The points are likely to cover major topics, findings, or conclusions described in the report. The output will be plain text, formatted with bullet markers (e.g., "-", "*", or similar), and written in a clear, readable style.
+
+=== SECTION E — LESSONS LEARNED ===
+What worked well was the clean separation of stages, which made the pipeline easy to follow and debug. Using pandas for structuring data and matplotlib for visualisation was straightforward and effective. However, handling raw PDF text was slightly painful, as formatting inconsistencies and noise can affect word counts and summaries. Additionally, integrating LLM APIs requires careful prompt design to ensure consistent outputs. One MLOps practice I would add is proper logging and monitoring (from Day 6), including tracking API responses, failures, and performance metrics, so the system can be reliably maintained and scaled in production environments.
