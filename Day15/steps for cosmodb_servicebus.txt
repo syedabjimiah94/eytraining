@@ -1,0 +1,312 @@
+Scenario
+
+Build a FastAPI application that:
+
+Receives user data
+Stores data in Cosmos DB
+Sends a message to Service Bus
+Dockerizes the app
+Pushes image to Azure Container Registry (ACR)
+Deploys on Azure Container Apps
+
+
+
+
+
+
+Client
+   |
+   v
+FastAPI Application
+   |
+   +------------------+
+   |                  |
+   v                  v
+Azure Cosmos DB   Azure Service Bus
+   |                  |
+   |                  v
+   |            Background Worker
+   |                  |
+   +------------------+
+            |
+            v
+      Azure Container App
+            |
+            v
+ Azure Container Registry
+
+
+
+
+Step 1: Create Resource Group
+
+A Resource Group is a folder that contains all Azure resources.
+
+Azure Portal:
+
+Home
+ └─ Resource Groups
+      └─ Create
+
+Fill:
+
+Resource Group Name : rg-fastapi-demo
+Region              : Central India
+
+Click Create.
+
+
+Step 2: Create Cosmos DB
+
+Azure Portal:
+
+Create Resource
+   └─ Azure Cosmos DB
+
+Choose:
+
+API : NoSQL
+
+Fill:
+
+Account Name : cosmos-fastapi-demo
+Resource Group : rg-fastapi-demo
+Region : Central India
+
+Create.
+
+Create Database
+
+Open Cosmos DB
+
+Data Explorer
+   └─ New Database
+
+Example:
+
+Database Name : appdb
+
+
+Create Container
+Container Name : users
+Partition Key  : /id
+
+Create.
+
+
+Get Connection Details
+
+Go:
+
+Cosmos DB
+   └─ Keys
+
+Copy:
+
+URI
+PRIMARY KEY
+
+Used inside FastAPI.
+
+
+
+Step 3: Create Service Bus
+
+Azure Portal:
+
+Create Resource
+   └─ Service Bus
+
+Fill:
+
+Namespace Name : fastapi-bus-demo
+Resource Group : rg-fastapi-demo
+Pricing Tier   : Standard
+
+Create.
+
+
+
+Create Queue
+
+Open Namespace
+
+Queues
+   └─ Add Queue
+
+Example:
+
+Queue Name : user-events
+
+Create.
+
+Get Connection String
+
+Go:
+
+Shared Access Policies
+   └─ RootManageSharedAccessKey
+
+Copy:
+
+Primary Connection String
+
+
+Step 4: Build FastAPI App
+
+Folder:
+
+project/
+│
+├── main.py
+├── db.py
+├── servicebus.py
+├── requirements.txt
+└── Dockerfile
+
+
+
+
+
+
+
+Step 6: Create Azure Container Registry (ACR)
+
+Azure Portal:
+
+Create Resource
+   └─ Container Registry
+
+Fill:
+
+Registry Name : fastapiacrdemo
+Resource Group : rg-fastapi-demo
+SKU : Basic
+
+Create.
+
+Enable Admin User
+
+Open ACR
+
+Settings
+   └─ Access Keys
+
+Enable:
+
+Admin User = ON
+
+Copy:
+
+Username
+Password
+
+container register --> create --> access key -->click admin
+
+registry name, username, password
+
+docker login registry name.azurecr.io -u username -p password
+
+docker build -t registry name.azurecr.io/pipeline-app:v1 .
+"""if getting error, Docker file is not available, please check in folder that is Docker or Docker.txt
+ren Dockerfile.txt Dockerfile"""
+
+docker push registry name.azurecr.io/pipeline-app:v1
+
+
+Step 8: Create Container App Environment
+
+Azure Portal:
+
+Create Resource
+   └─ Container Apps Environment
+
+Fill:
+
+Name : fastapi-env
+Resource Group : rg-fastapi-demo
+Region : Central India
+
+Create.
+
+
+Step 9: Create Container App
+
+Azure Portal:
+
+Create Resource
+   └─ Container App
+
+Fill:
+
+Name : fastapi-app
+Resource Group : rg-fastapi-demo
+Environment : fastapi-env
+
+
+Select Image Source
+
+Choose:
+
+Azure Container Registry
+
+Select:
+
+Registry : fastapiacrdemo
+Image    : fastapi-demo
+Tag      : v1
+Configure Ingress
+
+Enable:
+
+Ingress : Enabled
+Transport : HTTP
+Port : 8000
+
+Create.
+
+Step 10: Add Environment Variables
+
+Container App
+
+Settings
+   └─ Environment Variables
+
+Add:
+
+COSMOS_URL
+COSMOS_KEY
+
+SERVICEBUS_CONNECTION_STRING
+
+Save.
+
+Step 11: Deploy New Version
+
+Whenever code changes:
+
+Build
+docker build -t fastapi-demo .
+Tag
+docker tag fastapi-demo fastapiacrdemo.azurecr.io/fastapi-demo:v2
+Push
+docker push fastapiacrdemo.azurecr.io/fastapi-demo:v2
+Update Container App
+Container App
+   └─ Revisions
+       └─ Create New Revision
+
+Select:
+
+v2
+
+Deploy.
+
+What each Azure service does
+Service	                                   Purpose
+Azure Cosmos DB	                Stores application data (JSON documents)
+Azure Service Bus	        Queues messages between services
+Docker	                        Packages application into a container
+Azure Container Registry	Stores Docker images
+Azure Container Apps	        Runs the Docker container
+Resource Group	                Holds all Azure resources together
