@@ -1,0 +1,56 @@
+1.Claims Adjudication
+Answer:  GraphFlo
+Reason:
+The scenario says:
+
+Fraud screening
+Policy coverage check
+Medical coding review
+
+These three checks are independent and can run in parallel (at the same time).
+After all three finish, a final decision agent combines the results and decides Approve or Deny.
+This is exactly a GraphFlow pattern:
+
+Multiple branches execute simultaneously.
+Results converge into a downstream node.
+Supports DAG/workflow-style orchestration with parallel execution and result aggregation.
+
+Why not the others?
+
+Round-robin → agents take turns sequentially.
+Selector → chooses one agent among many.
+Swarm / Handoff → agents hand work to another agent dynamically.
+Magentic → focuses on conversational collaboration among agents, not structured parallel workflow.
+
+
+2. RFP Response Builder
+   Answer: GraphFlow
+
+Why?
+
+Technical → Pricing → Compliance → Timeline sections are created by specialists.
+A reviewer checks the assembled draft.
+Reviewer may send specific sections back for rework.
+There are dependencies, review loops, and conditional paths.
+
+This is a structured workflow with branching and feedback loops, which fits GraphFlow best.
+Runner-up: Swarm / Handoff (because work moves between specialists), but GraphFlow is better due to the review-and-rework workflow.
+
+3. Buyer's Research Assistant
+   Answer: Magentic
+
+Why?
+
+User asks a broad goal: "Find three trending materials and summarize suppliers."
+Number of tasks is unknown beforehand.
+May require web searches, data gathering, analysis, and collaboration among agents.
+Agents can dynamically decide what work needs to be done.
+
+This is exactly the strength of Magentic—dynamic multi-agent collaboration for open-ended problems.
+Runner-up: Swarm / Handoff (agents can delegate work), but Magentic is designed for complex exploratory tasks with unknown workflows.
+
+Final Answers
+ScenarioBest                Pattern          Runner-up
+Claims Adjudication         GraphFlowSwarm / HandoffRFP
+Response Builder            GraphFlowSwarm / Handoff
+Buyer's Research Assistant  MagenticSwarm / Handoff
