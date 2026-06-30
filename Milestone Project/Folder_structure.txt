@@ -1,0 +1,39 @@
+autohealai-weather/
+│
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                    # FastAPI entry point
+│   │   ├── config/
+│   │   │   └── settings.py            # Configuration (Pydantic)
+│   │   ├── weather_service.py         # Core weather fetching logic
+│   │   ├── failure_simulator.py       # Demo failure injection
+│   │   ├── middleware/
+│   │   │   ├── __init__.py
+│   │   │   └── monitoring.py          # Monitoring + Prometheus middleware
+│   │   ├── agents/
+│   │   │   ├── __init__.py
+│   │   │   ├── orchestration.py       # LangGraph main graph
+│   │   │   ├── monitoring_agent.py
+│   │   │   ├── diagnosis_agent.py
+│   │   │   ├── healing_agent.py
+│   │   │   ├── validator.py
+│   │   │   └── notification_agent.py
+│   │   └── logs/                      # Runtime logs
+│   │       ├── app.log
+│   │       ├── audit.log
+│   │       ├── incident.log
+│   │       ├── diagnosis.log
+│   │       ├── healing.log
+│   │       └── notification.log
+│   │
+│   ├── requirements.txt
+│   └── .env
+│
+├── frontend/
+│   ├── streamlit_app.py
+│   └── requirements.txt
+│
+├── README.md
+├── .gitignore
+└── .env.example
