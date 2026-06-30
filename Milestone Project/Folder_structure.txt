@@ -1,39 +1,90 @@
-autohealai-weather/
+self-healing-weather-api/
 │
 ├── backend/
-│   ├── app/
+│  - app/
+│   │
+│   ├── main.py
+│   │
+│   ├── config/
 │   │   ├── __init__.py
-│   │   ├── main.py                    # FastAPI entry point
-│   │   ├── config/
-│   │   │   └── settings.py            # Configuration (Pydantic)
-│   │   ├── weather_service.py         # Core weather fetching logic
-│   │   ├── failure_simulator.py       # Demo failure injection
-│   │   ├── middleware/
-│   │   │   ├── __init__.py
-│   │   │   └── monitoring.py          # Monitoring + Prometheus middleware
-│   │   ├── agents/
-│   │   │   ├── __init__.py
-│   │   │   ├── orchestration.py       # LangGraph main graph
-│   │   │   ├── monitoring_agent.py
-│   │   │   ├── diagnosis_agent.py
-│   │   │   ├── healing_agent.py
-│   │   │   ├── validator.py
-│   │   │   └── notification_agent.py
-│   │   └── logs/                      # Runtime logs
-│   │       ├── app.log
-│   │       ├── audit.log
-│   │       ├── incident.log
-│   │       ├── diagnosis.log
-│   │       ├── healing.log
-│   │       └── notification.log
+│   │   └── settings.py
+│   │
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── weather.py
+│   │   ├── health.py
+│   │   └── simulator.py
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── weather_service.py
+│   │   ├── mock_weather.py
+│   │   ├── real_weather.py
+│   │   ├── recovery_service.py
+│   │   └── monitoring_service.py
+│   │
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   ├── logging_middleware.py
+│   │   ├── latency_middleware.py
+│   │   ├── request_id.py
+│   │   ├── exception_handler.py
+│   │   └── metrics.py
+│   │
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── graph.py
+│   │   ├── monitor_agent.py
+│   │   ├── diagnosis_agent.py
+│   │   ├── healing_agent.py
+│   │   ├── validator_agent.py
+│   │   ├── notification_agent.py
+│   │   ├── learning_agent.py
+│   │   └── state.py
+│   │
+│   ├── prompts/
+│   │   ├── diagnosis_prompt.py
+│   │   ├── healing_prompt.py
+│   │   └── notification_prompt.py
+│   │
+│   ├── models/
+│   │   ├── weather.py
+│   │   ├── incident.py
+│   │   ├── health.py
+│   │   └── response.py
+│   │
+│   ├── database/
+│   │   ├── database.py
+│   │   └── incidents.db
+│   │
+│   ├── state/
+│   │   ├── app_state.py
+│   │   └── simulator_state.py
+│   │
+│   ├── utils/
+│   │   ├── logger.py
+│   │   ├── helpers.py
+│   │   ├── constants.py
+│   │   └── api_client.py
+│   │
+│   ├── logs/
+│   │   ├── app.log
+│   │   ├── incident.log
+│   │   ├── diagnosis.log
+│   │   ├── healing.log
+│   │   ├── notification.log
+│   │   └── audit.log
 │   │
 │   ├── requirements.txt
 │   └── .env
 │
 ├── frontend/
 │   ├── streamlit_app.py
+│   │
+│   │
 │   └── requirements.txt
 │
-├── README.md
+├── docker-compose.yml
 ├── .gitignore
+├── README.md
 └── .env.example

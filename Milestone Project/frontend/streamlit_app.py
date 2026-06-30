@@ -1,319 +1,132 @@
-import streamlit as st
 import requests
+import streamlit as st
 
-# ---------------------------------------------------
-# Page Config
-# ---------------------------------------------------
-st.set_page_config(
-    page_title="AutoHealAI",
-    page_icon="🌦",
-    layout="wide"
-)
+API_BASE = "http://localhost:8000"
 
-# ---------------------------------------------------
-# Custom CSS
-# ---------------------------------------------------
-st.markdown("""
-<style>
+st.set_page_config(page_title="Self Healing Weather API", layout="wide")
+st.title("🌦 Self-Healing Weather Platform")
+st.caption("Live weather + mock demo + LangGraph workflow + SQLite incident audit")
 
-/* Background */
-.main {
-    background-color: #F5F7FA;
-}
+with st.sidebar:
+    st.header("Demo Controls")
+    mode = st.radio("Provider mode", ["live", "mock"], horizontal=True)
 
-/* Main Container */
-.block-container{
-    padding-top:2rem;
-    padding-bottom:2rem;
-}
+    st.subheader("Failure Simulator")
 
-/* Main Title */
-h1{
-    color:#0F172A;
-    font-size:42px;
-    font-weight:800;
-    text-align:center;
-}
-
-/* Subtitle (st.caption) */
-div[data-testid="stCaptionContainer"]{
-    text-align:center;
-    color:#64748B;
-    font-size:18px;
-}
-
-/* Labels (Select Demo Mode, Enter City) */
-label{
-    color:#1E3A8A !important;
-    font-weight:600 !important;
-    font-size:16px !important;
-}
-
-/* Selectbox & Textbox */
-.stSelectbox div[data-baseweb="select"],
-.stTextInput input{
-    border-radius:10px;
-}
-
-/* Button */
-.stButton>button{
-    width:220px;
-    height:52px;
-    border-radius:10px;
-    background:#2563EB;
-    color:white;
-    font-size:20px;
-    font-weight:bold;
-    border:none;
-}
-
-.stButton>button:hover{
-    background:#1D4ED8;
-    color:white;
-}
-
-/* Metric Cards */
-div[data-testid="metric-container"]{
-    background:white;
-    border-radius:15px;
-    padding:18px;
-    box-shadow:0px 3px 12px rgba(0,0,0,.10);
-}
-
-/* Metric Label */
-div[data-testid="metric-container"] label{
-    color:#475569 !important;
-}
-
-/* Metric Value */
-div[data-testid="metric-container"] div[data-testid="stMetricValue"]{
-    color:#2563EB;
-    font-size:30px;
-    font-weight:bold;
-}
-
-/* Expander */
-.streamlit-expanderHeader{
-    color:#1E3A8A;
-    font-weight:bold;
-}
-
-/* Success Box */
-div[data-testid="stAlert"]{
-    border-radius:12px;
-}
-
-/* Horizontal Line */
-hr{
-    border:1px solid #E2E8F0;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------
-# Header
-# ---------------------------------------------------
-
-# st.title("🌦 AutoHealAI - Weather Monitoring System")
-st.markdown("""
-<h1>🌦 AutoHealAI</h1>
-<h4 style='text-align:center;color:#64748B;'>
-AI-powered Self-Healing Weather Monitoring Platform
-</h4>
-""", unsafe_allow_html=True)
-
-
-st.divider()
-
-# ---------------------------------------------------
-# Input Section
-# ---------------------------------------------------
-
-col1, col2 = st.columns(2)
-
-with col1:
-
-    mode = st.selectbox(
-        "🎮 Select Demo Mode",
+    failure_type = st.selectbox(
+        "Choose failure scenario",
         [
-            "SUCCESS",
-            "TIMEOUT",
-            "SLOW_RESPONSE",
-            "API_DOWN",
-            "INVALID_RESPONSE"
-        ]
+            "success",
+            "network_error",
+            "weather_api_down",
+            "llm_timeout",
+            "invalid_api_key",
+            "database_down",
+        ],
     )
 
-with col2:
 
-    city = st.text_input(
-        "📍 Enter City",
-        "Chennai"
-    )
-
-st.write("")
-
-left, center, right = st.columns([2,1,2])
-
-with center:
-    get_weather = st.button("☁ Get Weather")
-
-st.divider()
-
-# ---------------------------------------------------
-# Weather Button
-# ---------------------------------------------------
-
-if get_weather:
+    def post_toggle(path, value):
+        return requests.post(f"{API_BASE}{path}/{str(value).lower()}", timeout=5).json()
 
     try:
+        status = requests.get(f"{API_BASE}/simulator/status", timeout=5).json()
+        api_down = st.toggle("Primary API Down", value=status["api_down"])
+        bad_payload = st.toggle("Bad Provider Payload", value=status["bad_payload"])
+        slow_response = st.toggle("Slow Response / Timeout", value=status["slow_response"])
 
-        url = f"http://localhost:8000/weather/{city}?mode={mode}"
+        if api_down != status["api_down"]:
+            post_toggle("/simulator/api-down", api_down)
+        if bad_payload != status["bad_payload"]:
+            post_toggle("/simulator/bad-payload", bad_payload)
+        if slow_response != status["slow_response"]:
+            post_toggle("/simulator/slow-response", slow_response)
 
-        response = requests.get(url, timeout=20)
+        if st.button("Reset Simulator"):
+            requests.post(f"{API_BASE}/simulator/reset", timeout=5)
+            st.rerun()
+    except Exception as exc:
+        st.error(f"Backend not reachable: {exc}")
 
-        result = response.json()
+st.divider()
+city = st.text_input("Ask weather for city", "Chennai")
 
-        user = result["user_response"]
+if st.button("Generate Weather Output", type="primary"):
+    try:
+        with st.spinner("Calling backend workflow..."):
+            response = requests.get(
+                f"{API_BASE}/weather",
+                params={
+                        "city": city,
+                        "mode": mode,
+                        "failure_type": failure_type,
+                    },
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
 
-        # -------------------------------------
-        # SUCCESS
-        # -------------------------------------
-
-        if user["status"] == "SUCCESS":
-
-            st.success(user["message"])
-
-            weather = user["weather"]
-
-            st.markdown("## 🌤 Weather Details")
-
-            c1,c2,c3,c4 = st.columns(4)
-
-            with c1:
-                st.metric(
-                    "📍 City",
-                    weather["city"]
-                )
-
-            with c2:
-                st.metric(
-                    "🌡 Temperature",
-                    weather["temperature"]
-                )
-
-            with c3:
-                st.metric(
-                    "☁ Condition",
-                    weather["condition"]
-                )
-
-            with c4:
-                st.metric(
-                    "💧 Humidity",
-                    weather["humidity"]
-                )
-
-        # -------------------------------------
-        # FAILURE
-        # -------------------------------------
-
+        col1, col2, col3, col4,col5 = st.columns(5)
+        col1.metric("Temperature", f"{data['temperature']} °C")
+        col2.metric("Humidity", f"{data['humidity']} %")
+        col3.metric("Wind", f"{data['wind_speed']} km/h")
+        col4.metric("Source", data.get("source", "unknown"))
+        col5.metric(
+            "Latency",
+            f"{data.get('latency_ms',0)} ms"
+        )
+        if data.get("healed"):
+            st.warning("Primary failed. Self-healing returned fallback weather output.")
         else:
+            st.success("Weather generated successfully.")
 
-            st.error(user["message"])
+        st.subheader("Weather Response")
+        st.json(data)
 
-        st.write("")
         st.divider()
+        st.subheader("Failure Flow: Monitor → Diagnosis → Healing → Validate")
+        workflow = data.get("workflow", [])
+        if workflow:
+            cols = st.columns(min(5, len(workflow)))
+            for idx, step in enumerate(workflow):
+                with cols[idx % len(cols)]:
+                    status = step.get("status", "UNKNOWN")
+                    icon = "✅" if status == "SUCCESS" or status == "SAVED" else "⚠️" if status in ["FAILED", "NOT_SENT"] else "ℹ️"
+                    st.markdown(f"### {icon} {step.get('step', '').title()}")
+                    st.write(status)
+                    st.caption(step.get("message", ""))
+                    if "llm_used" in step:
+                        st.caption(f"LLM used: {step['llm_used']}")
+        else:
+            st.info("No failure workflow was needed because the provider succeeded.")
 
-        # -------------------------------------
-        # Workflow
-        # -------------------------------------
+        if data.get("incident_id"):
+            st.subheader("Incident + Ticket")
+            st.json({
+                "incident_id": data.get("incident_id"),
+                "attempts": data.get("attempts"),
+                "diagnosis": data.get("diagnosis"),
+                "healing": data.get("healing"),
+                "verification": data.get("verification"),
+                "ticket": data.get("ticket"),
+            })
+            if data.get("ticket", {}).get("status") in ["NOT_SENT", "FAILED"]:
+                st.error("Manual investigation needed. Ticket format was created, but email was not sent because Resend is not configured or failed.")
+                st.text_area("Manual investigation ticket body", data.get("ticket", {}).get("body", ""), height=300)
+    except Exception as exc:
+        st.error(f"Request failed: {exc}")
 
-        workflow = result["workflow"]
-        monitor = workflow["monitoring"]
-        diagnosis = workflow["diagnosis"]
-        healing = workflow["healing"]
-        verification = workflow["verification"]
+st.divider()
+try:
+    health = requests.get(f"{API_BASE}/health", timeout=5).json()
+    st.subheader("System Health")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Status", health["status"])
+    col2.metric("Incidents", health["total_incidents"])
+    col3.metric("Healed", health["total_healed"])
 
-        with st.expander("🔍 View Self-Healing Workflow", expanded=False):
-
-            # ---------------- Monitoring ----------------
-            st.markdown("### 🛰 Monitoring Agent")
-
-            if monitor:
-                st.info(
-        f"""
-        **Status :** {monitor['status']}
-
-        **Severity :** {monitor.get('severity','-')}
-
-        **Message :** {monitor.get('message','-')}
-        """
-                )
-
-            # ---------------- Diagnosis ----------------
-            if diagnosis:
-
-                st.markdown("### 🧠 Diagnosis Agent")
-
-                st.warning(
-        f"""
-        **Root Cause :** {diagnosis['root_cause']}
-
-        **Confidence :** {diagnosis['confidence']}
-
-        **Healable :** {diagnosis['healable']}
-
-        **Recommendation :**
-        {diagnosis['recommended_action']}
-        """
-                )
-
-            # ---------------- Healing ----------------
-            if healing:
-
-                st.markdown("### 🔧 Healing Agent")
-
-                if healing["status"] == "SUCCESS":
-
-                    st.success(
-        f"""
-        ✅ **Auto-Healed Successfully**
-
-        Retry Attempt : {healing['retry_attempt']}
-
-        Action : {healing['action']}
-        """
-                    )
-
-                else:
-
-                    st.error(
-        f"""
-        ❌ **Healing Failed**
-
-        Retry Attempt : {healing['retry_attempt']}
-
-        Action : {healing['action']}
-        """
-                    )
-
-            # ---------------- Verification ----------------
-            if verification:
-
-                st.markdown("### ✅ Verification Agent")
-
-                if verification["status"] == "SUCCESS":
-
-                    st.success(
-                        "Weather API verified successfully."
-                    )
-
-                else:
-
-                    st.error(
-                        "Verification failed. API is still unhealthy."
-                    )
-
-    except Exception as e: st.error(f"Unable to connect to FastAPI server.\n\n{e}")
+    st.subheader("Recent SQLite Incidents")
+    incidents = requests.get(f"{API_BASE}/incidents", timeout=5).json()
+    st.dataframe(incidents, use_container_width=True)
+except Exception as exc:
+    st.error(f"Could not load health/incidents: {exc}")

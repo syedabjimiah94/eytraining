@@ -1,3 +1,0 @@
-{"ticket_id": "INC-20260629085633", "timestamp": "2026-06-29 08:56:33", "city": "Chennai", "status": "FAILED", "action": "ESCALATE", "retry_attempt": 2, "priority": "HIGH"}
-{"ticket_id": "INC-20260629100746", "timestamp": "2026-06-29 10:07:46", "city": "Chennai", "status": "FAILED", "action": "ESCALATE", "retry_attempt": 2, "priority": "HIGH"}
-{"ticket_id": "INC-20260629171238", "timestamp": "2026-06-29 17:12:38", "city": "Bangalore", "status": "FAILED", "action": "ESCALATE", "retry_attempt": 2, "priority": "HIGH"}
