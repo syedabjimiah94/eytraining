@@ -1,0 +1,18 @@
+services:
+  backend:
+    build: ./backend
+    container_name: self-healing-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app/database:/app/app/database
+
+  frontend:
+    build: ./frontend
+    container_name: self-healing-streamlit
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    environment:
+      - API_BASE=http://backend:8000
