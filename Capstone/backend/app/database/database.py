@@ -2,6 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import Any
+from datetime import datetime
 
 DB_PATH = Path(__file__).parent / "incidents.db"
 
@@ -27,6 +28,25 @@ def init_db():
                 flow_json TEXT,
                 ticket_status TEXT,
                 ticket_body TEXT,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS request_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id TEXT,
+                city TEXT NOT NULL,
+                mode TEXT,
+                failure_type TEXT,
+                final_status TEXT,
+                error_type TEXT,
+                diagnosis TEXT,
+                healing_action TEXT,
+                validation_result TEXT,
+                incident_id INTEGER,
+                latency_ms REAL,
                 created_at TEXT NOT NULL
             )
             """
@@ -119,3 +139,56 @@ def get_incident(incident_id: int) -> dict[str, Any] | None:
             if item.get(key):
                 item[key.replace("_json", "")] = json.loads(item[key])
         return item
+
+
+
+def save_request_log(log: dict[str, Any]) -> int:
+    init_db()
+    with get_connection() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO request_logs (
+                request_id, city, mode, failure_type, final_status,
+                error_type, diagnosis, healing_action, validation_result,
+                incident_id, latency_ms, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                log.get("request_id"),
+                log.get("city"),
+                log.get("mode"),
+                log.get("failure_type"),
+                log.get("final_status"),
+                log.get("error_type"),
+                log.get("diagnosis"),
+                log.get("healing_action"),
+                log.get("validation_result"),
+                log.get("incident_id"),
+                log.get("latency_ms"),
+                log.get("created_at", datetime.utcnow().isoformat()),
+            ),
+        )
+        conn.commit()
+        return int(cur.lastrowid)
+
+
+def list_request_logs(limit: int = 30) -> list[dict[str, Any]]:
+    init_db()
+    with get_connection() as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT * FROM request_logs ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+def delete_request_log_by_request_id(request_id: str) -> int:
+    init_db()
+    with get_connection() as conn:
+        cur = conn.execute(
+            "DELETE FROM request_logs WHERE request_id = ?",
+            (request_id,),
+        )
+        conn.commit()
+        return cur.rowcount

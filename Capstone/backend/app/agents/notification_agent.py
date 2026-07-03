@@ -14,7 +14,15 @@ def notification_node(state):
     diagnosis = state.get("diagnosis", {})
     healing = state.get("healing", {})
     verification = state.get("verification", {})
-    needs_manual = healing.get("status") != "SUCCESS" or verification.get("status") != "SUCCESS"
+    # needs_manual = healing.get("status") != "SUCCESS" or verification.get("status") != "SUCCESS"
+    failure_type = state.get("failure_type", "success")
+
+    CRITICAL_FAILURES = [
+        "invalid_api_key",
+        "database_down",
+    ]
+
+    needs_manual = failure_type in CRITICAL_FAILURES
 
     incident = {
         "city": state.get("city", "unknown"),
@@ -50,7 +58,8 @@ def notification_node(state):
     incident["ticket_status"] = ticket.get("status")
     app_state.last_incident = incident
     app_state.total_incidents += 1
-    if healing.get("status") == "SUCCESS" and verification.get("status") == "SUCCESS":
+    # if healing.get("status") == "SUCCESS" and verification.get("status") == "SUCCESS":
+    if healing.get("status") in ["SUCCESS", "HEALED"] and verification.get("status") == "SUCCESS":
         app_state.total_healed += 1
 
     state["ticket"] = ticket

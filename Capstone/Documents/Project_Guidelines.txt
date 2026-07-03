@@ -1,0 +1,516 @@
+✅ STEP 1 — PROJECT SETUP (pip + uv + structure)
+1. Create project folder
+mkdir autohealai-weather
+cd autohealai-weather
+
+2. Create virtual environment (choose ONE)
+👉 Option A (pip - standard)
+python -m venv venv
+
+Activate:
+
+Windows
+
+venv\Scripts\activate
+
+Mac/Linux
+
+source venv/bin/activate
+👉 Option B (uv - recommended faster)
+
+If you have uv installed:
+
+uv venv
+
+Activate:
+
+.venv\Scripts\activate   # Windows
+source .venv/bin/activate # Mac/Linux
+
+
+
+
+uvicorn app.main:app --reload
+streamlit run streamlit_app.py
+
+
+Docker
+docker compose down
+docker compose up --build
+
+docker compose down -v
+docker compose up --build
+
+docker compose exec backend python -c "import sqlite3; from app.database.database import DB_PATH; conn=sqlite3.connect(DB_PATH); print(DB_PATH); print(conn.execute('SELECT name FROM sqlite_master WHERE type=\"table\"').fetchall())"
+
+docker compose exec backend python -c "import sqlite3; from app.database.database import DB_PATH; conn=sqlite3.connect(DB_PATH); print(conn.execute('SELECT id, city, failure_type, final_status, latency_ms FROM request_logs ORDER BY id DESC LIMIT 5').fetchall())"
+
+
+http://localhost:8501
+http://localhost:8000/docs#/
+
+
+
+
+
+
+
+3. Install dependencies
+
+We keep it minimal first:
+
+pip install fastapi uvicorn streamlit requests
+
+(or with uv)
+
+uv pip install fastapi uvicorn streamlit requests
+
+
+
+👉 Open browser:
+
+http://127.0.0.1:8000/docs
+
+
+
+
+################################################################
+
+
+###################################################################
+
+
+second -selfhealing
+
+
+self-healing-weather-api/
+│
+├── backend/
+│   ├── app/
+│   │
+│   ├── main.py
+│   │
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── settings.py
+│   │
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── weather.py
+│   │   ├── health.py
+│   │   └── simulator.py
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── weather_service.py
+│   │   ├── mock_weather.py
+│   │   ├── real_weather.py
+│   │   ├── recovery_service.py
+│   │   └── monitoring_service.py
+│   │
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   ├── logging_middleware.py
+│   │   ├── latency_middleware.py
+│   │   ├── request_id.py
+│   │   ├── exception_handler.py
+│   │   └── metrics.py
+│   │
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── graph.py
+│   │   ├── monitor_agent.py
+│   │   ├── diagnosis_agent.py
+│   │   ├── healing_agent.py
+│   │   ├── validator_agent.py
+│   │   ├── notification_agent.py
+│   │   ├── learning_agent.py
+│   │   └── state.py
+│   │
+│   ├── prompts/
+│   │   ├── diagnosis_prompt.py
+│   │   ├── healing_prompt.py
+│   │   └── notification_prompt.py
+│   │
+│   ├── models/
+│   │   ├── weather.py
+│   │   ├── incident.py
+│   │   ├── health.py
+│   │   └── response.py
+│   │
+│   ├── database/
+│   │   ├── database.py
+│   │   └── incidents.db
+│   │
+│   ├── state/
+│   │   ├── app_state.py
+│   │   └── simulator_state.py
+│   │
+│   ├── utils/
+│   │   ├── logger.py
+│   │   ├── helpers.py
+│   │   ├── constants.py
+│   │   └── api_client.py
+│   │
+│   ├── logs/
+│   │   ├── app.log
+│   │   ├── incident.log
+│   │   ├── diagnosis.log
+│   │   ├── healing.log
+│   │   ├── notification.log
+│   │   └── audit.log
+│   │
+│   ├── requirements.txt
+│   └── .env
+│
+├── frontend/
+│   ├── streamlit_app.py
+│   │
+│   ├── pages/
+│   │   ├── Dashboard.py
+│   │   ├── Monitoring.py
+│   │   ├── Failure_Simulator.py
+│   │   ├── AI_Healing.py
+│   │   ├── Incidents.py
+│   │   └── Settings.py
+│   │
+│   ├── components/
+│   │   ├── sidebar.py
+│   │   ├── metrics.py
+│   │   ├── charts.py
+│   │   └── cards.py
+│   │
+│   └── requirements.txt
+│
+├── docker-compose.yml
+├── .gitignore
+├── README.md
+└── .env.example
+
+
+
+
+
+
+
+
+
+Azure:
+1.resources grp
+##########################
+2. Create Azure Container Registry (Portal)
+Go to Azure Portal
+Click Create a resource
+Search Container Registry
+Click Create
+
+Setting -access key -on admin
+
+username - selfhealingweatheracr
+password - 
+
+###############################
+
+Login to Azure (CLI)
+
+Open Command Prompt:
+
+az login
+
+Browser opens.
+
+Login with your Azure account.
+
+Verify:
+
+az account show
+Step 5: Login Docker to ACR
+
+Go to your ACR.
+
+Copy
+
+Login server
+
+Example
+
+selfhealingweatheracr.azurecr.io
+
+Now
+
+docker login selfhealingweatheracr.azurecr.io
+
+Username
+
+<ACR Username>
+
+Password
+
+<Password1>
+
+
+
+Step 6: Tag Images
+
+Current images
+
+self-healing-weather-api-backend
+self-healing-weather-api-frontend
+
+Tag them
+
+Backend
+
+docker tag self-healing-weather-api-backend selfhealingweatheracr.azurecr.io/self-healing-backend:v1
+
+Frontend
+
+docker tag self-healing-weather-api-frontend selfhealingweatheracr.azurecr.io/self-healing-frontend:v1
+
+
+
+Step 7: Push Images
+
+Backend
+
+docker push selfhealingweatheracr.azurecr.io/self-healing-backend:v1
+
+Frontend
+
+docker push selfhealingweatheracr.azurecr.io/self-healing-frontend:v1
+
+In ACR - services -repo --> you will see there
+
+Step 8: Create Azure Container Apps Environment (Portal)
+
+Search
+
+Container Apps Environments
+
+Click
+
+Create
+
+Fill
+
+Name:
+self-healing-env
+
+Resource Group:
+self-healing-rg
+
+Region:
+East US
+
+Create.
+
+Step 9: Create Backend Container App
+
+Search
+
+Container Apps
+
+Create
+
+Fill
+
+General
+
+Name:
+backend-api
+
+Environment:
+self-healing-env
+
+Container
+
+Choose
+
+Azure Container Registry
+
+Select
+
+selfhealingweatheracr
+
+Repository
+
+self-healing-backend
+
+Tag
+
+v1
+
+Ingress
+
+External
+
+Target Port
+
+8000
+
+Environment Variables
+
+Add
+
+OPENAI_API_KEY
+
+LANGCHAIN_API_KEY
+
+LANGCHAIN_TRACING_V2=true
+
+LANGCHAIN_PROJECT=selfHealingWeatherAPI
+
+RESEND_API_KEY
+
+INCIDENT_TO_EMAIL
+
+Create.
+
+Step 10: Get Backend URL
+
+Open
+
+backend-api
+
+You'll see
+
+Application URL
+backend
+https://backend-api.xxx.azurecontainerapps.io
+https://self-healing-env.mangoforest-c028460f.westus2.azurecontainerapps.io
+
+frontend:
+https://weather-ui.mangoforest-c028460f.westus2.azurecontainerapps.io
+
+
+
+Copy.
+
+Step 11: Create Streamlit Container App
+
+Again
+
+Create
+
+Container App
+
+Name
+
+weather-ui
+
+Container
+
+Choose
+
+self-healing-frontend
+
+Tag
+
+v1
+
+Ingress
+
+External
+
+Port
+
+8501
+
+Environment Variable
+
+API_BASE
+
+https://backend-api.xxx.azurecontainerapps.io
+
+Create.
+
+Step 12: Open Streamlit
+
+Open
+
+https://weather-ui.xxx.azurecontainerapps.io
+
+Now Streamlit talks to Azure backend.
+
+
+
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+Step 1: Create GitHub repository
+
+On GitHub:
+
+GitHub → New repository
+Repository name: self-healing-weather-api
+Visibility: Public or Private
+Do not add README
+Create repository
+Step 2: Open PowerShell in project root
+cd C:\syed\Milestone_project\self-healing-weather-api
+Step 3: Initialize Git locally
+
+
+git init
+git add .
+git commit -m "Initial self-healing weather API project"
+
+
+Step 4: Connect local project to GitHub
+
+GitHub will show your repo URL. Use your URL here:
+
+git branch -M main
+git remote add origin https://github.com/syedabjimiah94/self-healing-weather-api.git
+git push -u origin main
+
+
+
+Step 5: Create GitHub Actions folder
+
+In your project root, create:
+
+.github/workflows/
+
+Inside it create:
+
+docker-ci.yml
+Step 6: Add this to .github/workflows/docker-ci.yml
+name: Docker CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Compose images
+        run: docker compose build
+
+      - name: Start containers
+        run: docker compose up -d
+
+      - name: Check running containers
+        run: docker ps
+
+      - name: Stop containers
+        run: docker compose down
+Step 7: Push workflow
+git add .
+git commit -m "Add Docker CI workflow"
+git push
+
+Then go to:
+
+GitHub repo → Actions
+
+You should see Docker CI running.
+
+

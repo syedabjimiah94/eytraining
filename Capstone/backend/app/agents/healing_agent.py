@@ -12,57 +12,87 @@ def healing_node(state):
     failure_type = state.get("failure_type", "success")
     plan = llm.healing_plan(state.get("diagnosis", {}))
 
-    if failure_type in ["network_error", "weather_api_down", "llm_timeout"]:
-        data = recovery.recover_with_fallback(state["city"])
+    healable_failures = [
+        "network_error",
+        "weather_api_down",
+        "api_timeout",
+        "rate_limit_429",
+        "invalid_json",
+        "llm_timeout",
+    ]
 
-        if failure_type == "network_error":
-            action = "Retry completed and service recovered"
+    critical_failures = [
+        "invalid_api_key",
+        "database_down",
+    ]
 
-        elif failure_type == "weather_api_down":
-            action = "Weather API failed, switched to fallback cache"
+    if failure_type in healable_failures:
+        data = recovery.recover_with_fallback(
+            state["city"],
+            failure_type=failure_type
+        )
+        data["status"] = "SUCCESS"
+        data["message"] = "Primary provider failed. Self-healing returned recovered output."
+        action = data.get("healing_action", "Recovered using fallback provider")
 
-        elif failure_type == "llm_timeout":
-            action = "LLM timeout detected, switched to backup recovery plan"
-
-        data["healed"] = True
-        data["healing_action"] = action
-
-        state["final_response"] = data
         state["healing"] = {
             "status": "SUCCESS",
             "action": action,
-            "plan": plan
+            "plan": plan,
+        }
+
+        state["final_response"] = data
+
+        state["flow"].append({
+            "step": "healing",
+            "status": "SUCCESS",
+            "message": action,
+        })
+
+    elif failure_type in critical_failures:
+        action = "Automatic healing failed. Manual investigation required."
+
+        state["healing"] = {
+            "status": "ESCALATED",
+            "action": action,
+            "plan": plan,
+        }
+
+        state["final_response"] = {
+            "city": state["city"],
+            "status": "ESCALATED",
+            "failure_type": failure_type,
+            "message": "Critical failure detected. Email notification required.",
+            "healed": False,
+        }
+
+        state["flow"].append({
+            "step": "healing",
+            "status": "ESCALATED",
+            "message": action,
+        })
+
+    else:
+        action = "No healing required"
+
+        state["healing"] = {
+            "status": "SUCCESS",
+            "action": action,
+            "plan": plan,
+        }
+
+        state["final_response"] = {
+            "city": state["city"],
+            "status": "SUCCESS",
+            "failure_type": failure_type,
+            "message": "Weather request completed successfully",
+            "healed": False,
         }
 
         state["flow"].append({
             "step": "healing",
             "status": "SUCCESS",
             "message": action,
-            "llm_used": plan.get("llm_used", False)
         })
-
-        return state
-
-    if failure_type in ["invalid_api_key", "database_down"]:
-        action = "Automatic healing failed. Manual investigation required."
-
-        state["healing"] = {
-            "status": "FAILED",
-            "action": action,
-            "plan": plan
-        }
-
-        state["flow"].append({
-            "step": "healing",
-            "status": "FAILED",
-            "message": action
-        })
-
-        return state
-
-    state["healing"] = {
-        "status": "NOT_REQUIRED",
-        "action": "No healing required"
-    }
 
     return state
