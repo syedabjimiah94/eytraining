@@ -9,3 +9,4 @@ langgraph
 langchain-openai
 langsmith
 resend
+prometheus-client==0.25.0

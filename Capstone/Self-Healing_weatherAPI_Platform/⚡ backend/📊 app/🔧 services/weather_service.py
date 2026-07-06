@@ -41,6 +41,7 @@ from datetime import datetime
 from app.services.metrics_service import MetricsService
 from app.database.database import save_request_log
 from app.services.drift_service import DriftService
+from app.services.prometheus_metrics import record_weather_observability
 
 metrics_service = MetricsService()
 drift_service = DriftService()
@@ -149,5 +150,6 @@ class WeatherService:
             response["request_log_error"] = str(e)
 
         metrics_service.record(response)
+        record_weather_observability(response)
 
         return response
