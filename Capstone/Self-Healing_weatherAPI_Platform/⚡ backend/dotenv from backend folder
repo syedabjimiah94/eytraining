@@ -1,0 +1,26 @@
+APP_NAME=Self Healing Weather API
+HOST=0.0.0.0
+PORT=8000
+DEBUG=True
+API_VERSION=v1
+
+# live = Open-Meteo real API, mock = demo data
+WEATHER_PROVIDER_MODE=live
+PRIMARY_RETRY_COUNT=3
+PRIMARY_RETRY_DELAY_SECONDS=0.5
+PRIMARY_TIMEOUT_SECONDS=5
+
+# Optional: enable LLM diagnosis/healing text
+OPENAI_API_KEY=
+OPENAI_MODEL=
+
+# Optional: LangSmith tracing for LangGraph/LangChain
+LANGCHAIN_API_KEY=
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=selfHealingWeatherAPI
+
+# Optional: Resend email ticket demo
+RESEND_API_KEY=
+INCIDENT_FROM_EMAIL=Self Healing Demo <onboarding@resend.dev>
+INCIDENT_TO_EMAIL=
+

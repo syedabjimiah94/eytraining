@@ -6,6 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 API_BASE = os.getenv("API_BASE", "http://localhost:8000")
+OPENMETEO_GATEWAY_URL = os.getenv("OPENMETEO_GATEWAY_URL", "http://host.docker.internal:9001")
 # st.sidebar.caption(f"Backend API: {API_BASE}")
 
 st.set_page_config(
@@ -37,6 +38,31 @@ st.markdown("""
 [data-testid="stSidebar"] h4,
 [data-testid="stSidebar"] label {
     color: white!important;
+}
+
+/* Streamlit buttons inside dark sidebar: keep button text visible */
+[data-testid="stSidebar"] button,
+[data-testid="stSidebar"] button * ,
+[data-testid="stSidebar"] button p,
+[data-testid="stSidebar"] button div {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+}
+
+/* Sidebar text inputs/select boxes must keep dark readable text */
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] textarea,
+[data-testid="stSidebar"] [data-baseweb="select"] *,
+[data-testid="stSidebar"] [data-baseweb="input"] * {
+    color: #0f172a !important;
+}
+
+/* Labels remain white on dark sidebar */
+[data-testid="stSidebar"] label p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stMarkdown h3,
+[data-testid="stSidebar"] .stMarkdown h2 {
+    color: #ffffff !important;
 }
 
 .block-container {
@@ -209,9 +235,9 @@ div[role="option"]:hover {
 
 
 
-def safe_get(url, default):
+def safe_get(url, default, params=None):
     try:
-        return requests.get(url, timeout=5).json()
+        return requests.get(url, params=params, timeout=5).json()
     except Exception:
         return default
 
@@ -308,30 +334,68 @@ def show_drift(data):
         st.success(drift.get("message", "No drift detected"))
 
 
+def show_incident_storage_summary(data):
+    storage = data.get("incident_storage") or {}
+    if not storage:
+        return
+
+    st.markdown('<div class="section-title">Incident Storage / DB Self-Healing</div>', unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("DB Failover", "YES" if storage.get("db_failover") else "NO")
+    with c2:
+        st.metric("Primary DB", str(storage.get("primary_db", "unknown")).upper())
+    with c3:
+        st.metric("Saved To", storage.get("saved_to", "unknown"))
+
+    if storage.get("db_failover"):
+        st.warning("Database self-healing activated: primary incidents.db failed → incident saved to secondary_incidents.db")
+    else:
+        st.success("Incident saved to primary incidents.db")
+
+    st.json(storage)
+
+
 def show_failure_flow(data):
     st.markdown('<div class="section-title">Failure Flow</div>', unsafe_allow_html=True)
+
+    if data.get("failure_type") == "live_provider_unreachable" or data.get("provider_status") == "unreachable":
+        st.error("Live provider unreachable was detected. Fallback self-healing response was returned.")
+        if data.get("self_healing_summary"):
+            st.json(data.get("self_healing_summary"))
+
     workflow = data.get("workflow", [])
     if workflow:
         cols = st.columns(min(5, len(workflow)))
         for idx, step in enumerate(workflow):
-            status = step.get("status", "UNKNOWN")
-            badge_class = "status-success" if status in ["SUCCESS", "SAVED"] else "status-failed"
-            icon = "✅" if status in ["SUCCESS", "SAVED"] else "⚠️"
+            status = step.get("status", "UNKNOWN") if isinstance(step, dict) else "INFO"
+            step_name = step.get("step", "workflow") if isinstance(step, dict) else "workflow"
+            message = step.get("message", str(step)) if isinstance(step, dict) else str(step)
+            badge_class = "status-success" if status in ["SUCCESS", "SAVED", "HEALED"] else "status-failed"
+            icon = "✅" if status in ["SUCCESS", "SAVED", "HEALED"] else "⚠️"
 
             with cols[idx % len(cols)]:
                 st.markdown(f"""
                 <div class="metric-card blue">
-                    <h3>{icon} {step.get("step", "").title()}</h3>
+                    <h3>{icon} {step_name.replace('_', ' ').title()}</h3>
                     <div class="{badge_class}">{status}</div>
-                    <p class="card-sub">{step.get("message", "")}</p>
+                    <p class="card-sub">{message}</p>
                 </div>
                 """, unsafe_allow_html=True)
     else:
         st.info("No failure workflow was needed because provider succeeded.")
 
+    show_incident_storage_summary(data)
+
 
 def show_backend_response(data):
     st.markdown('<div class="section-title">Full Backend Response</div>', unsafe_allow_html=True)
+
+    if data.get("failure_type") == "live_provider_unreachable" or data.get("provider_status") == "unreachable":
+        st.error("Live Open-Meteo provider/gateway unreachable. Backend returned a self-healed fallback response.")
+
+    show_incident_storage_summary(data)
     st.json(data)
 
 
@@ -340,12 +404,15 @@ def show_incident_ticket(data):
     if data.get("incident_id"):
         st.json({
             "incident_id": data.get("incident_id"),
+            "incident_storage": data.get("incident_storage"),
             "attempts": data.get("attempts"),
             "diagnosis": data.get("diagnosis"),
             "healing": data.get("healing"),
             "verification": data.get("verification"),
             "ticket": data.get("ticket"),
         })
+
+        show_incident_storage_summary(data)
 
         if data.get("ticket", {}).get("status") in ["NOT_SENT", "FAILED"]:
             st.error("Manual investigation needed.")
@@ -651,11 +718,29 @@ def show_request_logs():
 
 def show_sqlite_incidents():
     st.markdown('<div class="section-title">☷ Recent SQLite Incidents</div>', unsafe_allow_html=True)
-    incidents = safe_get(f"{API_BASE}/incidents", [])
+
+    db_source = st.selectbox(
+        "Incident database source",
+        ["primary", "secondary", "both"],
+        format_func=lambda x: {
+            "primary": "Primary incidents.db",
+            "secondary": "Secondary secondary_incidents.db",
+            "both": "Both databases",
+        }[x],
+    )
+
+    incidents = safe_get(
+        f"{API_BASE}/incidents",
+        [],
+        params={"limit": 50, "source": db_source},
+    )
 
     if incidents:
         df = pd.DataFrame(incidents)
-        wanted_cols = ["id", "city", "error_type", "severity", "message", "status", "action_taken"]
+        wanted_cols = [
+            "id", "db_source", "city", "error_type", "severity",
+            "message", "status", "action_taken", "created_at"
+        ]
         available_cols = [col for col in wanted_cols if col in df.columns]
         df = df[available_cols]
 
@@ -680,6 +765,14 @@ def show_sqlite_incidents():
                 return "background-color:#DCFCE7;color:#166534;font-weight:bold;"
             return ""
 
+        def color_db_source(val):
+            val = str(val).lower()
+            if val == "secondary":
+                return "background-color:#FEF3C7;color:#92400E;font-weight:bold;"
+            if val == "primary":
+                return "background-color:#E0F2FE;color:#075985;font-weight:bold;"
+            return ""
+
         styled_df = df.style
         if "status" in df.columns:
             styled_df = styled_df.map(color_status, subset=["status"])
@@ -687,6 +780,8 @@ def show_sqlite_incidents():
             styled_df = styled_df.map(color_city, subset=["city"])
         if "severity" in df.columns:
             styled_df = styled_df.map(color_severity, subset=["severity"])
+        if "db_source" in df.columns:
+            styled_df = styled_df.map(color_db_source, subset=["db_source"])
 
         st.dataframe(styled_df, use_container_width=True, hide_index=True)
     else:
@@ -738,7 +833,82 @@ with st.sidebar:
         ],
     )
 
-    st.markdown("### Output Tabs")
+    st.markdown("### Live Provider Gateway")
+    gateway_url = st.text_input(
+        "Gateway URL",
+        value=OPENMETEO_GATEWAY_URL,
+        help="For Docker demo use http://host.docker.internal:9001. For local backend/frontend use http://127.0.0.1:9001.",
+    )
+
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        if st.button("Check Gateway", use_container_width=True):
+            try:
+                res = requests.get(f"{gateway_url}/status", timeout=5)
+                res.raise_for_status()
+                st.success(f"Gateway status: {res.json().get('status', 'unknown').upper()}")
+            except Exception as exc:
+                st.error(f"Gateway not reachable: {exc}")
+
+    with col_g2:
+        if st.button("Live Provider Unreachable"):
+            try:
+                seconds = 30
+                res = requests.post(
+                    f"{gateway_url}/control/unreachable",
+                    params={"seconds": seconds},
+                    timeout=5
+                )
+
+                st.session_state["provider_down_until"] = time.time() + seconds
+
+                st.error("Live provider is now UNREACHABLE")
+                st.json(res.json())
+
+            except Exception as e:
+                st.error(f"Could not contact gateway: {e}")
+
+
+    # Provider outage status / countdown
+    if "provider_down_until" in st.session_state:
+        remaining = int(st.session_state["provider_down_until"] - time.time())
+
+        if remaining > 0:
+            st.error("🔴 Live Provider Status: UNREACHABLE")
+            st.warning(
+                f"Auto-restart in approximately {remaining} seconds. "
+                "Generate live weather now to demonstrate self-healing fallback."
+            )
+
+            progress_value = max(0, min(1, remaining / 30))
+            st.progress(progress_value)
+
+        else:
+            st.success("🟢 Live Provider Status: AVAILABLE / AUTO-RESTARTED")
+            st.session_state.pop("provider_down_until", None)
+
+
+    st.markdown("### Database Simulator")
+    col_db1, col_db2 = st.columns(2)
+    with col_db1:
+        if st.button("Primary DB Down", use_container_width=True):
+            try:
+                res = requests.post(f"{API_BASE}/simulator/database-down/true", timeout=5)
+                res.raise_for_status()
+                st.error("Primary incidents.db failure enabled. New incidents will fail over to secondary DB.")
+            except Exception as exc:
+                st.error(f"Could not update DB simulator: {exc}")
+
+    with col_db2:
+        if st.button("Restore DB", use_container_width=True):
+            try:
+                res = requests.post(f"{API_BASE}/simulator/database-down/false", timeout=5)
+                res.raise_for_status()
+                st.success("Primary incidents.db restored.")
+            except Exception as exc:
+                st.error(f"Could not update DB simulator: {exc}")
+
+    st.markdown("### Results")
     selected_page = st.radio(
         "Choose output section",
         pages,
